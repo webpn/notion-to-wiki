@@ -136,7 +136,10 @@ def convert_database_to_markdown(database_data, results, downloader, output_dir)
                                 if related_title_prop and related_title_prop.get("type") == "title":
                                     related_title = related_title_prop.get("title", [{}])[0].get("plain_text", "Untitled")
                                     related_names.append(f"[{related_title}]({slugify(related_title)}/index.md)")
-                                    continue
+                                else:
+                                    related_title = "-"
+                                    related_names.append(f"[{related_title}]({slugify(related_title)}/index.md)")
+                                continue
 
                             related_database_data = downloader.download_related_database_data(related_id)
                             if related_database_data:
