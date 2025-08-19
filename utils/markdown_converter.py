@@ -108,7 +108,7 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
         # Estrai i nomi delle colonne dall'oggetto database_data['properties']
         all_columns = list(database_data['properties'].keys())
         
-        # Trova la colonna title e mettila per prima
+        # Trova la colonna title
         title_column = None
         other_columns = []
         for col in all_columns:
@@ -118,11 +118,24 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
             else:
                 other_columns.append(col)
         
-        # Organizza le colonne: title per prima, poi le altre
-        if title_column:
-            columns = [title_column] + other_columns
+        # Personalizza le colonne per database di Tracciamenti
+        if "Tracciamenti" in title:
+            # Per i database di tracciamenti, mostra solo colonne specifiche in ordine specifico
+            columns = []
+            if title_column:
+                columns.append(title_column)
+            
+            # Aggiungi colonne specifiche se esistono
+            desired_columns = ["Schermata", "Evento di navigazione", "AA Events"]
+            for desired_col in desired_columns:
+                if desired_col in all_columns:
+                    columns.append(desired_col)
         else:
-            columns = all_columns
+            # Per altri database, usa l'ordine normale: title per prima, poi le altre
+            if title_column:
+                columns = [title_column] + other_columns
+            else:
+                columns = all_columns
             
         markdown_table += "| " + " | ".join(columns) + " |\n"
         markdown_table += "| " + " | ".join(['---'] * len(columns)) + " |\n"
