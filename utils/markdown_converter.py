@@ -69,7 +69,11 @@ def convert_block_to_markdown(block):
 
 def convert_page_to_markdown(page_data, blocks, output_dir):
     """Converte una pagina Notion completa in file Markdown."""
-    title = page_data.get("properties", {}).get("title", {}).get("title", [{}])[0].get("plain_text", "Untitled")
+    # Estrai il titolo concatenando tutti i plain_text
+    title_array = page_data.get("properties", {}).get("title", {}).get("title", [])
+    title = "".join([item.get("plain_text", "") for item in title_array]) if title_array else "Untitled"
+    if not title.strip():
+        title = "Untitled"
     slug = slugify(title)
     page_dir = os.path.join(output_dir, slug)
     os.makedirs(page_dir, exist_ok=True)
@@ -91,7 +95,11 @@ def convert_page_to_markdown(page_data, blocks, output_dir):
 
 def convert_database_to_markdown(database_data, results, all_data, all_records, downloader, output_dir):
     """Converte un database Notion in tabella Markdown usando tutti i dati già scaricati."""
-    title = database_data.get("title", [{}])[0].get("plain_text", "Untitled Database")
+    # Estrai il titolo del database concatenando tutti i plain_text
+    title_array = database_data.get("title", [])
+    title = "".join([item.get("plain_text", "") for item in title_array]) if title_array else "Untitled Database"
+    if not title.strip():
+        title = "Untitled Database"
     slug = slugify(title)
     output_file = os.path.join(output_dir, f"{slug}.md")
 
@@ -111,7 +119,9 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
 
                     if data_type == 'title':
                         value = property_value.get('title', [])
-                        row_values.append(value[0]['plain_text'] if value else '')
+                        # Concatena tutti i plain_text degli elementi nell'array title
+                        title_text = "".join([item.get("plain_text", "") for item in value])
+                        row_values.append(title_text)
                     elif data_type == 'rich_text':
                         value = property_value.get('rich_text', [])
                         row_values.append("".join([text['plain_text'] for text in value]))

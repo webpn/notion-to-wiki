@@ -174,14 +174,17 @@ def main():
                 
                 # Aggiungi tutti i record al dizionario globale per le relazioni
                 for record_id, record_data in db_data["records"].items():
-                    # Estrai il titolo del record
+                    # Estrai il titolo del record (concatenando tutti i plain_text)
                     record_title = "Untitled Record"
                     properties = record_data.get("properties", {})
                     for prop_name, prop_data in properties.items():
                         if prop_data.get("type") == "title":
                             title_array = prop_data.get("title", [])
                             if title_array:
-                                record_title = title_array[0].get("plain_text", "Untitled Record")
+                                # Concatena tutti i plain_text degli elementi nell'array
+                                record_title = "".join([item.get("plain_text", "") for item in title_array])
+                                if not record_title.strip():
+                                    record_title = "Untitled Record"
                                 break
                     
                     all_records[record_id] = {
