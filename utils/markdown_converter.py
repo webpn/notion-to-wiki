@@ -106,12 +106,31 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
     markdown_table = f"# {title}\n\n"
     if results:
         # Estrai i nomi delle colonne dall'oggetto database_data['properties']
-        columns = list(database_data['properties'].keys())
+        all_columns = list(database_data['properties'].keys())
+        
+        # Trova la colonna title e mettila per prima
+        title_column = None
+        other_columns = []
+        for col in all_columns:
+            prop_data = database_data['properties'][col]
+            if prop_data.get('type') == 'title':
+                title_column = col
+            else:
+                other_columns.append(col)
+        
+        # Organizza le colonne: title per prima, poi le altre
+        if title_column:
+            columns = [title_column] + other_columns
+        else:
+            columns = all_columns
+            
         markdown_table += "| " + " | ".join(columns) + " |\n"
         markdown_table += "| " + " | ".join(['---'] * len(columns)) + " |\n"
 
         for row in results:
             row_values = []
+            row_id = row.get("id")
+            
             for column in columns:
                 property_value = row['properties'].get(column)
                 if property_value:
@@ -121,6 +140,13 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
                         value = property_value.get('title', [])
                         # Concatena tutti i plain_text degli elementi nell'array title
                         title_text = "".join([item.get("plain_text", "") for item in value])
+                        
+                        # Rendi il titolo cliccabile se il record ha una sottopagina
+                        if row_id and row_id in all_records and all_records[row_id].get("blocks"):
+                            database_slug = slugify(title)
+                            record_slug = slugify(title_text) if title_text else "untitled-record"
+                            title_text = f"[{title_text}]({database_slug}/{record_slug}.md)"
+                        
                         row_values.append(title_text)
                     elif data_type == 'rich_text':
                         value = property_value.get('rich_text', [])
@@ -155,7 +181,9 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
                             # Controlla se è un record di un database
                             elif related_id in all_records:
                                 record_info = all_records[related_id]
-                                related_names.append(f"[{record_info['title']}]")
+                                database_slug = slugify(record_info["database_title"])
+                                record_slug = slugify(record_info["title"])
+                                related_names.append(f"[{record_info['title']}]({database_slug}/{record_slug}.md)")
                             else:
                                 # Fallback con ID parziale
                                 related_names.append(f"[ID: {related_id[:8]}...]")

@@ -8,7 +8,7 @@ from slugify import slugify
 
 from .config import OUTPUT_DIR, load_config, ensure_directories
 from .notion_client import NotionDownloader
-from .markdown_converter import convert_page_to_markdown, convert_database_to_markdown
+from .markdown_converter import convert_page_to_markdown, convert_database_to_markdown, convert_block_to_markdown
 from .link_processor import update_all_markdown_links
 
 console = Console()
@@ -37,7 +37,12 @@ def download_database_data(downloader, database_id):
     if results:
         for record in results:
             record_id = record["id"]
-            records[record_id] = record
+            # Scarica anche i blocchi figli del record
+            record_blocks = downloader.download_page_blocks(record_id)
+            records[record_id] = {
+                "record_data": record,
+                "blocks": record_blocks
+            }
     
     return {"database_data": database_data, "results": results, "records": records}
 
@@ -173,7 +178,8 @@ def main():
                 all_data[item_id] = {"info": item_info, "data": db_data}
                 
                 # Aggiungi tutti i record al dizionario globale per le relazioni
-                for record_id, record_data in db_data["records"].items():
+                for record_id, record_entry in db_data["records"].items():
+                    record_data = record_entry["record_data"]
                     # Estrai il titolo del record (concatenando tutti i plain_text)
                     record_title = "Untitled Record"
                     properties = record_data.get("properties", {})
@@ -190,7 +196,8 @@ def main():
                     all_records[record_id] = {
                         "title": record_title,
                         "database_title": item_info['title'],
-                        "database_id": item_id
+                        "database_id": item_id,
+                        "blocks": record_entry["blocks"]
                     }
                     console.print(f"  → Record: [dim]{record_title}[/dim]")
     
@@ -235,6 +242,35 @@ def main():
             }
 
     console.print(f"[bold green]Download completato. File salvati in '{OUTPUT_DIR}'[/bold green]")
+
+    # FASE 4: Conversione dei record dei database in sottopagine
+    console.print(f"[bold cyan]FASE 4: Creazione sottopagine per record database...[/bold cyan]")
+    for record_id, record_info in all_records.items():
+        if record_info.get("blocks"):
+            # Crea una sottopagina per ogni record con contenuto
+            database_slug = slugify(record_info["database_title"])
+            record_slug = slugify(record_info["title"])
+            
+            # Crea la directory del database se non esiste
+            db_dir = os.path.join(OUTPUT_DIR, database_slug)
+            os.makedirs(db_dir, exist_ok=True)
+            
+            # Crea il file per il record
+            record_file = os.path.join(db_dir, f"{record_slug}.md")
+            
+            content = f"# {record_info['title']}\n\n"
+            content += f"*Record del database: [{record_info['database_title']}]({database_slug}.md)*\n\n"
+            
+            # Converti i blocchi in markdown
+            for block in record_info["blocks"]:
+                markdown_block = convert_block_to_markdown(block)
+                if markdown_block:
+                    content += markdown_block + "\n\n"
+            
+            with open(record_file, "w", encoding="utf-8") as f:
+                f.write(content)
+            
+            console.print(f"  → Sottopagina: [dim]{record_info['database_title']}/{record_info['title']}[/dim]")
 
     # Aggiorna i link Markdown
     console.print("[yellow]Creazione dei link Markdown...[/yellow]")
