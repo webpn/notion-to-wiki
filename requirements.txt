@@ -1,0 +1,4 @@
+notion-client>=2.3.0
+notion-to-md-py>=0.1.2
+requests>=2.25.0
+python-slugify
