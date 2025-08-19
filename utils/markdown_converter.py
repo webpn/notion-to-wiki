@@ -3,6 +3,7 @@ Modulo per la conversione dei contenuti Notion in formato Markdown.
 """
 
 import os
+import requests
 from slugify import slugify
 
 
@@ -88,8 +89,8 @@ def convert_page_to_markdown(page_data, blocks, output_dir):
     return slug, title
 
 
-def convert_database_to_markdown(database_data, results, downloader, output_dir):
-    """Converte un database Notion in tabella Markdown."""
+def convert_database_to_markdown(database_data, results, all_data, all_records, downloader, output_dir):
+    """Converte un database Notion in tabella Markdown usando tutti i dati già scaricati."""
     title = database_data.get("title", [{}])[0].get("plain_text", "Untitled Database")
     slug = slugify(title)
     output_file = os.path.join(output_dir, f"{slug}.md")
@@ -130,25 +131,24 @@ def convert_database_to_markdown(database_data, results, downloader, output_dir)
                         relation_values = property_value.get('relation', [])
                         for relation_item in relation_values:
                             related_id = relation_item['id']
-                            related_page_data = downloader.download_related_page_data(related_id)
-                            if related_page_data:
-                                related_title_prop = related_page_data.get("properties", {}).get("title")
-                                if related_title_prop and related_title_prop.get("type") == "title":
-                                    related_title = related_title_prop.get("title", [{}])[0].get("plain_text", "Untitled")
+                            
+                            # Prima controlla se è un database o pagina già scaricato
+                            if related_id in all_data:
+                                related_entry = all_data[related_id]
+                                related_info = related_entry["info"]
+                                related_title = related_info["title"]
+                                
+                                if related_info["type"] == "page":
                                     related_names.append(f"[{related_title}]({slugify(related_title)}/index.md)")
-                                else:
-                                    related_title = "-"
-                                    related_names.append(f"[{related_title}]({slugify(related_title)}/index.md)")
-                                continue
-
-                            related_database_data = downloader.download_related_database_data(related_id)
-                            if related_database_data:
-                                related_db_title_prop = related_database_data.get("title", [{}])[0].get("plain_text", "Untitled Database")
-                                related_names.append(f"[{related_db_title_prop}]({slugify(related_db_title_prop)}.md)")
-                                continue
-
-                            related_names.append(f"[ID non trovato: {related_id}]")
-                            print(f"Errore nel recupero della relazione {related_id}")
+                                elif related_info["type"] == "database":
+                                    related_names.append(f"[{related_title}]({slugify(related_title)}.md)")
+                            # Controlla se è un record di un database
+                            elif related_id in all_records:
+                                record_info = all_records[related_id]
+                                related_names.append(f"[{record_info['title']}]")
+                            else:
+                                # Fallback con ID parziale
+                                related_names.append(f"[ID: {related_id[:8]}...]")
 
                         row_values.append(", ".join(related_names))
                     elif data_type == 'checkbox':
