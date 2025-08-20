@@ -105,6 +105,13 @@ def collect_page_or_database_info(downloader, block_id, collected_items):
 
 def recursively_collect_items(downloader, parent_block_id, collected_items, level=0):
     """Raccoglie ricorsivamente tutti gli elementi (pagine e database) senza scaricare i contenuti."""
+    # Prima aggiungi il parent_block_id stesso se non è già presente
+    if parent_block_id not in collected_items:
+        parent_info = collect_page_or_database_info(downloader, parent_block_id, collected_items)
+        if parent_info:
+            collected_items[parent_info["id"]] = parent_info
+    
+    # Poi scarica i blocchi figli e processa ricorsivamente
     blocks = downloader.download_page_blocks(parent_block_id)
     if not blocks:
         return

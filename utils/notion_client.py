@@ -21,7 +21,7 @@ class NotionDownloader:
         """Scarica un blocco Notion e lo converte in Markdown."""
         cache_filename = f"block_{block_id}.json"
         cached_data = get_cached_data(cache_filename)
-        if cached_data:
+        if cached_data is not None:
             return cached_data
         else:
             try:
@@ -39,7 +39,7 @@ class NotionDownloader:
         """Scarica i dati di una pagina Notion."""
         cache_filename = f"page_{page_id}.json"
         cached_data = get_cached_data(cache_filename)
-        if cached_data:
+        if cached_data is not None:
             return cached_data
         else:
             try:
@@ -57,7 +57,7 @@ class NotionDownloader:
         """Scarica i blocchi di una pagina Notion (con caching)."""
         cache_filename = f"page_blocks_{page_id}.json"
         cached_data = get_cached_data(cache_filename)
-        if cached_data:
+        if cached_data is not None:
             return cached_data
         else:
             try:
@@ -75,7 +75,7 @@ class NotionDownloader:
         """Scarica i dati di un database Notion."""
         cache_filename = f"database_{database_id}.json"
         cached_data = get_cached_data(cache_filename)
-        if cached_data:
+        if cached_data is not None:
             return cached_data
         else:
             try:
@@ -93,7 +93,7 @@ class NotionDownloader:
         """Scarica i risultati di una query del database Notion (con caching)."""
         cache_filename = f"database_query_{database_id}.json"
         cached_data = get_cached_data(cache_filename)
-        if cached_data:
+        if cached_data is not None:
             return cached_data
         else:
             try:
@@ -111,7 +111,7 @@ class NotionDownloader:
         """Scarica i dati di una pagina Notion (con caching) per le relazioni."""
         cache_filename = f"related_page_{page_id}.json"
         cached_data = get_cached_data(cache_filename)
-        if cached_data:
+        if cached_data is not None:
             return cached_data
         else:
             try:
@@ -129,7 +129,7 @@ class NotionDownloader:
         """Scarica i dati di un database Notion (con caching) per le relazioni."""
         cache_filename = f"related_database_{database_id}.json"
         cached_data = get_cached_data(cache_filename)
-        if cached_data:
+        if cached_data is not None:
             return cached_data
         else:
             try:
