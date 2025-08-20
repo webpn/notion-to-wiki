@@ -101,31 +101,6 @@ def collect_page_or_database_info(downloader, block_id, collected_items):
         collected_items[item_info["id"]] = item_info
         return item_info
     return None
-    """Raccoglie informazioni su una pagina o un database senza scaricare i contenuti."""
-    if block_id in collected_items:
-        console.print(f"Blocco [bold yellow]{block_id}[/bold yellow] già raccolto.")
-        return collected_items[block_id]
-
-    block = downloader.download_block(block_id)
-    if not block:
-        return None
-    
-    block_type = block.get("type")
-    item_info = None
-
-    if block_type == "child_page":
-        title = block.get('child_page', {}).get('title', 'Untitled')
-        console.print(f"Trovata pagina: [bold blue]{title}[/bold blue] ({block_id})")
-        item_info = {"type": "page", "id": block_id, "title": title}
-    elif block_type == "child_database":
-        title = block.get('child_database', {}).get('title', 'Untitled')
-        console.print(f"Trovato database: [bold green]{title}[/bold green] ({block_id})")
-        item_info = {"type": "database", "id": block_id, "title": title}
-
-    if item_info:
-        collected_items[item_info["id"]] = item_info
-        return item_info
-    return None
 
 
 def recursively_collect_items(downloader, parent_block_id, collected_items, level=0):
