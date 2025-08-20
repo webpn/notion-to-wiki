@@ -158,6 +158,113 @@ def build_item_path(item_id, collected_items, root_page_id=None):
     return "/".join(path_parts) if path_parts else ""
 
 
+def build_reverse_references(all_data, all_records):
+    """Build a mapping of which records reference each record."""
+    reverse_refs = {}  # record_id -> list of {source_record_id, source_database_title, source_record_title, property_name}
+    
+    # Go through all database records and their properties
+    for source_record_id, source_record_info in all_records.items():
+        source_database_id = source_record_info["database_id"]
+        source_database_title = source_record_info["database_title"]
+        source_record_title = source_record_info["title"]
+        
+        # Get the database structure to find relation properties
+        if source_database_id in all_data:
+            db_data = all_data[source_database_id]["data"]
+            database_data = db_data["database_data"]
+            properties = database_data.get('properties', {})
+            
+            # Get the record data to find actual relations
+            records = db_data["records"]
+            if source_record_id in records:
+                record_entry = records[source_record_id]
+                record_data = record_entry["record_data"]
+                record_properties = record_data.get("properties", {})
+                
+                # Look for relation properties
+                for prop_name, prop_data in properties.items():
+                    if prop_data.get('type') == 'relation':
+                        # Check if this record has values for this relation property
+                        if prop_name in record_properties:
+                            property_value = record_properties[prop_name]
+                            relation_values = property_value.get('relation', [])
+                            
+                            # For each referenced record, add this as a reverse reference
+                            for relation_item in relation_values:
+                                target_record_id = relation_item['id']
+                                
+                                if target_record_id not in reverse_refs:
+                                    reverse_refs[target_record_id] = []
+                                
+                                reverse_refs[target_record_id].append({
+                                    'source_record_id': source_record_id,
+                                    'source_database_title': source_database_title,
+                                    'source_record_title': source_record_title,
+                                    'property_name': prop_name
+                                })
+    
+    return reverse_refs
+
+
+def create_reverse_reference_table(record_id, reverse_refs, all_records, database_paths):
+    """Create a markdown table for records that reference the given record."""
+    if record_id not in reverse_refs:
+        return ""
+    
+    references = reverse_refs[record_id]
+    if not references:
+        return ""
+    
+    # Group by source database
+    by_database = {}
+    for ref in references:
+        db_title = ref['source_database_title']
+        if db_title not in by_database:
+            by_database[db_title] = []
+        by_database[db_title].append(ref)
+    
+    markdown = ""
+    for db_title, refs in by_database.items():
+        markdown += f"\n## Referenced by {db_title}\n\n"
+        markdown += "| Record | Property |\n"
+        markdown += "|--------|----------|\n"
+        
+        for ref in refs:
+            source_record_title = ref['source_record_title']
+            property_name = ref['property_name']
+            source_record_id = ref['source_record_id']
+            
+            # Find the database path for the source record
+            source_database_id = None
+            source_record_has_blocks = False
+            for record_info in all_records.values():
+                if record_info.get('title') == source_record_title and record_info.get('database_title') == db_title:
+                    source_database_id = record_info.get('database_id')
+                    source_record_has_blocks = bool(record_info.get('blocks'))
+                    break
+            
+            # Get the correct database path
+            if source_database_id and source_database_id in database_paths:
+                source_database_path = database_paths[source_database_id]
+            else:
+                source_database_path = slugify(db_title)
+            
+            # Create link - either to individual record page or to database table
+            if source_record_has_blocks:
+                # Link to individual record page
+                source_record_slug = slugify(source_record_title)
+                record_link = f"[{source_record_title}](../{source_database_path}/{source_record_slug}.md)"
+            else:
+                # Link to database table (record doesn't have its own page)
+                record_link = f"[{source_record_title}](../{source_database_path}.md)"
+            
+            markdown += f"| {record_link} | {property_name} |\n"
+        
+        markdown += "\n"
+    
+    return markdown
+
+
 def main():
     """Main function for downloading Notion content."""
     try:
@@ -219,6 +326,11 @@ def main():
                         console.print(f"  → Record: [dim]{record_title}[/dim]")
         
         console.print(f"[bold yellow]Collected {len(all_records)} total records from all databases[/bold yellow]")
+        
+        # Build reverse references
+        console.print("[yellow]Building reverse references...[/yellow]")
+        reverse_refs = build_reverse_references(all_data, all_records)
+        console.print(f"[yellow]Found reverse references for {len(reverse_refs)} records[/yellow]")
         
         # PHASE 3: Convert to Markdown
         console.print(f"[bold cyan]PHASE 3: Converting to Markdown...[/bold cyan]")
@@ -304,6 +416,11 @@ def main():
                     markdown_block = convert_block_to_markdown(block)
                     if markdown_block:
                         content += markdown_block + "\n\n"
+                
+                # Add reverse reference tables
+                reverse_ref_table = create_reverse_reference_table(record_id, reverse_refs, all_records, database_paths)
+                if reverse_ref_table:
+                    content += reverse_ref_table
                 
                 with open(record_file, "w", encoding="utf-8") as f:
                     f.write(content)
