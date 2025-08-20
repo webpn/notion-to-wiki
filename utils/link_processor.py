@@ -1,5 +1,5 @@
 """
-Modulo per la gestione e l'aggiornamento dei link interni nei file Markdown.
+Module for managing and updating internal links in Markdown files.
 """
 
 import re
@@ -7,20 +7,20 @@ import os
 
 
 def update_markdown_links(filepath, processed_items):
-    """Aggiorna i link interni di Notion nel file Markdown."""
+    """Update internal Notion links in the Markdown file."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
     except FileNotFoundError:
-        print(f"Errore: File non trovato: {filepath}")
+        print(f"Error: File not found: {filepath}")
         return
     except Exception as e:
-        print(f"Errore durante la lettura del file {filepath}: {e}")
+        print(f"Error reading file {filepath}: {e}")
         return
 
     updated_content = content
 
-    # Pattern per trovare i link di Notion (sia URL completi che ID)
+    # Pattern to find Notion links (both full URLs and IDs)
     notion_link_pattern = r"\[(.*?)\]\((?:https:\/\/www\.notion\.so\/([a-f0-9]{32})|([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}))\)"
 
     def replace_notion_link(match):
@@ -35,11 +35,11 @@ def update_markdown_links(filepath, processed_items):
                 return f"[{link_text}]({target_item['slug']}/index.md)"
             elif target_item["type"] == "database":
                 return f"[{link_text}]({target_item['slug']}.md)"
-        return match.group(0)  # Se l'ID non è trovato, lascia il link originale
+        return match.group(0)  # If ID not found, leave original link
 
     updated_content = re.sub(notion_link_pattern, replace_notion_link, updated_content)
 
-    # Pattern per trovare riferimenti a child_page e child_database (solo ID)
+    # Pattern to find child_page and child_database references (ID only)
     child_block_pattern = r"\[(.*?)\]\(([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\)"
 
     def replace_child_block_link(match):
@@ -61,11 +61,11 @@ def update_markdown_links(filepath, processed_items):
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(updated_content)
     except Exception as e:
-        print(f"Errore durante la scrittura del file aggiornato {filepath}: {e}")
+        print(f"Error writing updated file {filepath}: {e}")
 
 
 def update_all_markdown_links(output_dir, processed_items):
-    """Aggiorna i link in tutti i file Markdown generati."""
+    """Update links in all generated Markdown files."""
     for item_id, item_data in processed_items.items():
         if item_data["type"] == "page":
             page_path = os.path.join(output_dir, item_data["slug"], "index.md")

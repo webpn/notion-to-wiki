@@ -1,4 +1,5 @@
-notion-client>=2.3.0
-notion-to-md-py>=0.1.2
-requests>=2.25.0
-python-slugify
+notion-client>=2.3.0,<3.0.0
+requests>=2.25.0,<3.0.0
+python-slugify>=8.0.0,<9.0.0
+rich>=13.0.0,<14.0.0
+pathlib2>=2.3.0;python_version<"3.4"

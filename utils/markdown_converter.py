@@ -1,5 +1,5 @@
 """
-Modulo per la conversione dei contenuti Notion in formato Markdown.
+Module for converting Notion content to Markdown format.
 """
 
 import os
@@ -8,7 +8,7 @@ from slugify import slugify
 
 
 def convert_block_to_markdown(block):
-    """Converte un singolo blocco Notion in Markdown."""
+    """Convert a single Notion block to Markdown."""
     block_type = block.get("type")
     if not block_type:
         return ""
@@ -51,7 +51,7 @@ def convert_block_to_markdown(block):
     elif block_type == "file":
         file_url = block["file"].get("file", {}).get("url") or block["file"].get("external", {}).get("url", "")
         caption = "".join(text["plain_text"] for text in block["file"].get("caption", []))
-        markdown = f"[{caption}]({file_url})" if caption else f"[Allegato]({file_url})"
+        markdown = f"[{caption}]({file_url})" if caption else f"[Attachment]({file_url})"
     elif block_type == "child_page":
         title = block["child_page"]["title"]
         slug = slugify(title)
@@ -61,24 +61,24 @@ def convert_block_to_markdown(block):
         slug = slugify(title)
         markdown = f"[{title}]({slug}.md)"
     elif block_type == "relation":
-        # Potrebbe essere necessario un approccio più complesso per i link a pagine correlate
-        markdown = "[Relazione]"
-    # ... (Aggiungi altri tipi di blocco se necessario) ...
+        # A more complex approach might be needed for links to related pages
+        markdown = "[Relation]"
+    # ... (Add other block types if necessary) ...
     return markdown
 
 
 def convert_page_to_markdown(page_data, blocks, output_dir, item_path="", is_root=False):
-    """Converte una pagina Notion completa in file Markdown."""
-    # Estrai il titolo concatenando tutti i plain_text
+    """Convert a complete Notion page to Markdown file."""
+    # Extract title by concatenating all plain_text
     title_array = page_data.get("properties", {}).get("title", {}).get("title", [])
     title = "".join([item.get("plain_text", "") for item in title_array]) if title_array else "Untitled"
     if not title.strip():
         title = "Untitled"
     slug = slugify(title)
     
-    # Costruisci il percorso completo con la gerarchia
+    # Build the complete path with hierarchy
     if is_root:
-        # Per la root, salva direttamente come index.md nella root
+        # For root, save directly as index.md in the root
         page_dir = output_dir
         relative_path = ""
         output_file = os.path.join(page_dir, "index.md")
@@ -108,15 +108,15 @@ def convert_page_to_markdown(page_data, blocks, output_dir, item_path="", is_roo
 
 
 def convert_database_to_markdown(database_data, results, all_data, all_records, downloader, output_dir, item_path=""):
-    """Converte un database Notion in tabella Markdown usando tutti i dati già scaricati."""
-    # Estrai il titolo del database concatenando tutti i plain_text
+    """Convert a Notion database to Markdown table using all already downloaded data."""
+    # Extract database title by concatenating all plain_text
     title_array = database_data.get("title", [])
     title = "".join([item.get("plain_text", "") for item in title_array]) if title_array else "Untitled Database"
     if not title.strip():
         title = "Untitled Database"
     slug = slugify(title)
     
-    # Costruisci il percorso completo con la gerarchia
+    # Build the complete path with hierarchy
     if item_path:
         full_dir = os.path.join(output_dir, item_path)
         os.makedirs(full_dir, exist_ok=True)
@@ -128,10 +128,10 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
 
     markdown_table = f"# {title}\n\n"
     if results:
-        # Estrai i nomi delle colonne dall'oggetto database_data['properties']
+        # Extract column names from database_data['properties'] object
         all_columns = list(database_data['properties'].keys())
         
-        # Trova la colonna title
+        # Find the title column
         title_column = None
         other_columns = []
         for col in all_columns:
@@ -141,20 +141,20 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
             else:
                 other_columns.append(col)
         
-        # Personalizza le colonne per database di Tracciamenti
+        # Customize columns for Tracking databases
         if "Tracciamenti" in title:
-            # Per i database di tracciamenti, mostra solo colonne specifiche in ordine specifico
+            # For tracking databases, show only specific columns in specific order
             columns = []
             if title_column:
                 columns.append(title_column)
             
-            # Aggiungi colonne specifiche se esistono
+            # Add specific columns if they exist
             desired_columns = ["Schermata", "Evento di navigazione", "AA Events"]
             for desired_col in desired_columns:
                 if desired_col in all_columns:
                     columns.append(desired_col)
         else:
-            # Per altri database, usa l'ordine normale: title per prima, poi le altre
+            # For other databases, use normal order: title first, then others
             if title_column:
                 columns = [title_column] + other_columns
             else:
@@ -174,10 +174,10 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
 
                     if data_type == 'title':
                         value = property_value.get('title', [])
-                        # Concatena tutti i plain_text degli elementi nell'array title
+                        # Concatenate all plain_text elements in the title array
                         title_text = "".join([item.get("plain_text", "") for item in value])
                         
-                        # Rendi il titolo cliccabile se il record ha una sottopagina
+                        # Make the title clickable if the record has a subpage
                         if row_id and row_id in all_records and all_records[row_id].get("blocks"):
                             database_slug = slugify(title)
                             record_slug = slugify(title_text) if title_text else "untitled-record"
@@ -204,7 +204,7 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
                         for relation_item in relation_values:
                             related_id = relation_item['id']
                             
-                            # Prima controlla se è un database o pagina già scaricato
+                            # First check if it's an already downloaded database or page
                             if related_id in all_data:
                                 related_entry = all_data[related_id]
                                 related_info = related_entry["info"]
@@ -214,14 +214,14 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
                                     related_names.append(f"[{related_title}]({slugify(related_title)}/index.md)")
                                 elif related_info["type"] == "database":
                                     related_names.append(f"[{related_title}]({slugify(related_title)}.md)")
-                            # Controlla se è un record di un database
+                            # Check if it's a database record
                             elif related_id in all_records:
                                 record_info = all_records[related_id]
                                 database_slug = slugify(record_info["database_title"])
                                 record_slug = slugify(record_info["title"])
                                 related_names.append(f"[{record_info['title']}]({database_slug}/{record_slug}.md)")
                             else:
-                                # Fallback con ID parziale
+                                # Fallback with partial ID
                                 related_names.append(f"[ID: {related_id[:8]}...]")
 
                         row_values.append(", ".join(related_names))

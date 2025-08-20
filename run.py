@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Script semplificato per eseguire il backup modulare di Notion.
-Questo è il punto di ingresso preferito per usare la versione modulare.
+Simplified script to run the modular Notion backup.
+This is the preferred entry point for using the modular version.
 """
 
 from utils.main import main
 
 if __name__ == "__main__":
-    print("🚀 Avvio Notion Backupper (versione modulare)")
-    print("📋 Per maggiori informazioni vedere README.md")
+    print("🚀 Starting Notion Backupper (modular version)")
+    print("📋 For more information see README.md")
     print()
     main()
