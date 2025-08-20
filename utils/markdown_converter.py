@@ -67,7 +67,7 @@ def convert_block_to_markdown(block):
     return markdown
 
 
-def convert_page_to_markdown(page_data, blocks, output_dir):
+def convert_page_to_markdown(page_data, blocks, output_dir, item_path=""):
     """Converte una pagina Notion completa in file Markdown."""
     # Estrai il titolo concatenando tutti i plain_text
     title_array = page_data.get("properties", {}).get("title", {}).get("title", [])
@@ -76,12 +76,20 @@ def convert_page_to_markdown(page_data, blocks, output_dir):
         title = "Untitled"
     slug = slugify(title)
     
-    # Assicura che la directory di output esista
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"{slug}.md")
+    # Costruisci il percorso completo con la gerarchia
+    if item_path:
+        full_dir = os.path.join(output_dir, item_path)
+        os.makedirs(full_dir, exist_ok=True)
+        output_file = os.path.join(full_dir, f"{slug}.md")
+        relative_path = f"{item_path}/{slug}"
+    else:
+        # Assicura che la directory di output esista
+        os.makedirs(output_dir, exist_ok=True)
+        output_file = os.path.join(output_dir, f"{slug}.md")
+        relative_path = slug
 
     if not blocks:
-        return slug, title
+        return relative_path, title
 
     all_markdown_content = f"# {title}\n\n"
     for block in blocks:
@@ -91,10 +99,10 @@ def convert_page_to_markdown(page_data, blocks, output_dir):
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(all_markdown_content)
-    return slug, title
+    return relative_path, title
 
 
-def convert_database_to_markdown(database_data, results, all_data, all_records, downloader, output_dir):
+def convert_database_to_markdown(database_data, results, all_data, all_records, downloader, output_dir, item_path=""):
     """Converte un database Notion in tabella Markdown usando tutti i dati già scaricati."""
     # Estrai il titolo del database concatenando tutti i plain_text
     title_array = database_data.get("title", [])
@@ -102,7 +110,16 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
     if not title.strip():
         title = "Untitled Database"
     slug = slugify(title)
-    output_file = os.path.join(output_dir, f"{slug}.md")
+    
+    # Costruisci il percorso completo con la gerarchia
+    if item_path:
+        full_dir = os.path.join(output_dir, item_path)
+        os.makedirs(full_dir, exist_ok=True)
+        output_file = os.path.join(full_dir, f"{slug}.md")
+        relative_path = f"{item_path}/{slug}"
+    else:
+        output_file = os.path.join(output_dir, f"{slug}.md")
+        relative_path = slug
 
     markdown_table = f"# {title}\n\n"
     if results:
@@ -231,4 +248,4 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(markdown_table)
-    return slug, title
+    return relative_path, title

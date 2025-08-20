@@ -72,11 +72,16 @@ def collect_related_databases(downloader, database_id, collected_items):
                     collect_related_databases(downloader, related_db_id, collected_items)
 
 
-def collect_page_or_database_info(downloader, block_id, collected_items):
+def collect_page_or_database_info(downloader, block_id, collected_items, parent_id=None):
     """Raccoglie informazioni su una pagina o un database senza scaricare i contenuti."""
     if block_id in collected_items:
-        console.print(f"Blocco [bold yellow]{block_id}[/bold yellow] già raccolto.")
-        return collected_items[block_id]
+        # Se l'elemento esiste già ma con parent_id=None e ora abbiamo un parent_id,
+        # aggiorna il parent_id (caso dei database correlati che poi vengono trovati come child)
+        existing_item = collected_items[block_id]
+        if parent_id and not existing_item.get("parent_id"):
+            existing_item["parent_id"] = parent_id
+            console.print(f"Aggiornato parent per [bold yellow]{existing_item['title']}[/bold yellow] -> parent: {parent_id}")
+        return existing_item
 
     block = downloader.download_block(block_id)
     if not block:
@@ -88,11 +93,11 @@ def collect_page_or_database_info(downloader, block_id, collected_items):
     if block_type == "child_page":
         title = block.get('child_page', {}).get('title', 'Untitled')
         console.print(f"Trovata pagina: [bold blue]{title}[/bold blue] ({block_id})")
-        item_info = {"type": "page", "id": block_id, "title": title}
+        item_info = {"type": "page", "id": block_id, "title": title, "parent_id": parent_id}
     elif block_type == "child_database":
         title = block.get('child_database', {}).get('title', 'Untitled')
         console.print(f"Trovato database: [bold green]{title}[/bold green] ({block_id})")
-        item_info = {"type": "database", "id": block_id, "title": title}
+        item_info = {"type": "database", "id": block_id, "title": title, "parent_id": parent_id}
         
         # Raccoglie anche i database referenziati da questo database
         collect_related_databases(downloader, block_id, collected_items)
@@ -107,7 +112,8 @@ def recursively_collect_items(downloader, parent_block_id, collected_items, leve
     """Raccoglie ricorsivamente tutti gli elementi (pagine e database) senza scaricare i contenuti."""
     # Prima aggiungi il parent_block_id stesso se non è già presente
     if parent_block_id not in collected_items:
-        parent_info = collect_page_or_database_info(downloader, parent_block_id, collected_items)
+        # Per la root, parent_id è None
+        parent_info = collect_page_or_database_info(downloader, parent_block_id, collected_items, parent_id=None if level == 0 else None)
         if parent_info:
             collected_items[parent_info["id"]] = parent_info
     
@@ -117,11 +123,25 @@ def recursively_collect_items(downloader, parent_block_id, collected_items, leve
         return
         
     for block in blocks:
-        item_info = collect_page_or_database_info(downloader, block["id"], collected_items)
+        item_info = collect_page_or_database_info(downloader, block["id"], collected_items, parent_id=parent_block_id)
         if item_info:
             collected_items[item_info["id"]] = item_info
         if block.get("has_children"):
             recursively_collect_items(downloader, block["id"], collected_items, level + 1)
+
+
+def build_item_path(item_id, collected_items):
+    """Costruisce il percorso gerarchico di un elemento basato sui suoi parent."""
+    path_parts = []
+    current_id = item_id
+    
+    while current_id and current_id in collected_items:
+        current_item = collected_items[current_id]
+        if current_item.get("parent_id"):  # Non aggiungere la root al path
+            path_parts.insert(0, slugify(current_item["title"]))
+        current_id = current_item.get("parent_id")
+    
+    return "/".join(path_parts) if path_parts else ""
 
 
 def main():
@@ -195,31 +215,35 @@ def main():
         
         if item_info["type"] == "page":
             console.print(f"Convertendo pagina: [bold blue]{item_info['title']}[/bold blue]")
-            slug, title = convert_page_to_markdown(
+            item_path = build_item_path(item_id, collected_items)
+            relative_path, title = convert_page_to_markdown(
                 item_data["page_data"], 
                 item_data["blocks"], 
-                OUTPUT_DIR
+                OUTPUT_DIR,
+                item_path
             )
             processed_items[item_id] = {
                 "type": "page", 
                 "id": item_id, 
-                "slug": slug, 
+                "slug": relative_path, 
                 "title": title
             }
         elif item_info["type"] == "database":
             console.print(f"Convertendo database: [bold green]{item_info['title']}[/bold green]")
-            slug, title = convert_database_to_markdown(
+            item_path = build_item_path(item_id, collected_items)
+            relative_path, title = convert_database_to_markdown(
                 item_data["database_data"], 
                 item_data["results"], 
                 all_data,
                 all_records,
                 downloader, 
-                OUTPUT_DIR
+                OUTPUT_DIR,
+                item_path
             )
             processed_items[item_id] = {
                 "type": "database", 
                 "id": item_id, 
-                "slug": slug, 
+                "slug": relative_path, 
                 "title": title
             }
 
@@ -227,21 +251,36 @@ def main():
 
     # FASE 4: Conversione dei record dei database in sottopagine
     console.print(f"[bold cyan]FASE 4: Creazione sottopagine per record database...[/bold cyan]")
+    
+    # Crea una mappa database_id -> percorso per riferimenti corretti
+    database_paths = {}
+    for item_id, item_data in processed_items.items():
+        if item_data["type"] == "database":
+            database_paths[item_id] = item_data["slug"]
+    
     for record_id, record_info in all_records.items():
         if record_info.get("blocks"):
-            # Crea una sottopagina per ogni record con contenuto
-            database_slug = slugify(record_info["database_title"])
+            # Trova il percorso del database padre
+            database_id = record_info["database_id"]
+            database_path = database_paths.get(database_id, slugify(record_info["database_title"]))
+            
             record_slug = slugify(record_info["title"])
             
-            # Crea la directory del database se non esiste
-            db_dir = os.path.join(OUTPUT_DIR, database_slug)
+            # Usa il percorso gerarchico del database
+            if "/" in database_path:
+                # Database ha un percorso gerarchico
+                db_dir = os.path.join(OUTPUT_DIR, database_path)
+            else:
+                # Database nella root
+                db_dir = os.path.join(OUTPUT_DIR, database_path)
+            
             os.makedirs(db_dir, exist_ok=True)
             
             # Crea il file per il record
             record_file = os.path.join(db_dir, f"{record_slug}.md")
             
             content = f"# {record_info['title']}\n\n"
-            content += f"*Record del database: [{record_info['database_title']}]({database_slug}.md)*\n\n"
+            content += f"*Record del database: [{record_info['database_title']}]({database_path}.md)*\n\n"
             
             # Converti i blocchi in markdown
             for block in record_info["blocks"]:
