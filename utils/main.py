@@ -131,10 +131,16 @@ def recursively_collect_items(downloader, parent_block_id, collected_items, leve
 
 
 def build_item_path(item_id, collected_items):
-    """Costruisce il percorso gerarchico di un elemento basato sui suoi parent."""
+    """Costruisce il percorso gerarchico di un elemento basato sui suoi parent (escluso l'elemento stesso)."""
     path_parts = []
     current_id = item_id
     
+    # Inizia dal parent dell'elemento, non dall'elemento stesso
+    if current_id in collected_items:
+        current_item = collected_items[current_id]
+        current_id = current_item.get("parent_id")
+    
+    # Costruisci il percorso risalendo la gerarchia
     while current_id and current_id in collected_items:
         current_item = collected_items[current_id]
         if current_item.get("parent_id"):  # Non aggiungere la root al path
