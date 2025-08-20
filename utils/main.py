@@ -130,8 +130,12 @@ def recursively_collect_items(downloader, parent_block_id, collected_items, leve
             recursively_collect_items(downloader, block["id"], collected_items, level + 1)
 
 
-def build_item_path(item_id, collected_items):
+def build_item_path(item_id, collected_items, root_page_id=None):
     """Costruisce il percorso gerarchico di un elemento basato sui suoi parent (escluso l'elemento stesso)."""
+    # Se l'elemento è la root, restituisce percorso vuoto
+    if item_id == root_page_id:
+        return ""
+    
     path_parts = []
     current_id = item_id
     
@@ -143,8 +147,10 @@ def build_item_path(item_id, collected_items):
     # Costruisci il percorso risalendo la gerarchia
     while current_id and current_id in collected_items:
         current_item = collected_items[current_id]
-        if current_item.get("parent_id"):  # Non aggiungere la root al path
-            path_parts.insert(0, slugify(current_item["title"]))
+        # Non aggiungere la root al path
+        if current_item.get("parent_id") or current_id != root_page_id:
+            if current_id != root_page_id:  # Escludi la root dal path
+                path_parts.insert(0, slugify(current_item["title"]))
         current_id = current_item.get("parent_id")
     
     return "/".join(path_parts) if path_parts else ""
@@ -221,12 +227,14 @@ def main():
         
         if item_info["type"] == "page":
             console.print(f"Convertendo pagina: [bold blue]{item_info['title']}[/bold blue]")
-            item_path = build_item_path(item_id, collected_items)
+            item_path = build_item_path(item_id, collected_items, root_page_id)
+            is_root = (item_id == root_page_id)
             relative_path, title = convert_page_to_markdown(
                 item_data["page_data"], 
                 item_data["blocks"], 
                 OUTPUT_DIR,
-                item_path
+                item_path,
+                is_root
             )
             processed_items[item_id] = {
                 "type": "page", 
@@ -236,7 +244,7 @@ def main():
             }
         elif item_info["type"] == "database":
             console.print(f"Convertendo database: [bold green]{item_info['title']}[/bold green]")
-            item_path = build_item_path(item_id, collected_items)
+            item_path = build_item_path(item_id, collected_items, root_page_id)
             relative_path, title = convert_database_to_markdown(
                 item_data["database_data"], 
                 item_data["results"], 

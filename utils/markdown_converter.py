@@ -67,7 +67,7 @@ def convert_block_to_markdown(block):
     return markdown
 
 
-def convert_page_to_markdown(page_data, blocks, output_dir, item_path=""):
+def convert_page_to_markdown(page_data, blocks, output_dir, item_path="", is_root=False):
     """Converte una pagina Notion completa in file Markdown."""
     # Estrai il titolo concatenando tutti i plain_text
     title_array = page_data.get("properties", {}).get("title", {}).get("title", [])
@@ -77,15 +77,21 @@ def convert_page_to_markdown(page_data, blocks, output_dir, item_path=""):
     slug = slugify(title)
     
     # Costruisci il percorso completo con la gerarchia
-    if item_path:
+    if is_root:
+        # Per la root, salva direttamente come index.md nella root
+        page_dir = output_dir
+        relative_path = ""
+        output_file = os.path.join(page_dir, "index.md")
+    elif item_path:
         page_dir = os.path.join(output_dir, item_path, slug)
         relative_path = f"{item_path}/{slug}"
+        os.makedirs(page_dir, exist_ok=True)
+        output_file = os.path.join(page_dir, "index.md")
     else:
         page_dir = os.path.join(output_dir, slug)
         relative_path = slug
-    
-    os.makedirs(page_dir, exist_ok=True)
-    output_file = os.path.join(page_dir, "index.md")
+        os.makedirs(page_dir, exist_ok=True)
+        output_file = os.path.join(page_dir, "index.md")
 
     if not blocks:
         return relative_path, title
