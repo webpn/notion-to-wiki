@@ -32,7 +32,7 @@ def update_markdown_links(filepath, processed_items):
         if target_id and target_id in processed_items:
             target_item = processed_items[target_id]
             if target_item["type"] == "page":
-                return f"[{link_text}]({target_item['slug']}/index.md)"
+                return f"[{link_text}]({target_item['slug']}.md)"
             elif target_item["type"] == "database":
                 return f"[{link_text}]({target_item['slug']}.md)"
         return match.group(0)  # Se l'ID non è trovato, lascia il link originale
@@ -50,7 +50,7 @@ def update_markdown_links(filepath, processed_items):
         if target_id and target_id in processed_items:
             target_item = processed_items[target_id]
             if target_item["type"] == "page":
-                return f"[{link_text}]({target_item['slug']}/index.md)"
+                return f"[{link_text}]({target_item['slug']}.md)"
             elif target_item["type"] == "database":
                 return f"[{link_text}]({target_item['slug']}.md)"
         return match.group(0)
@@ -68,7 +68,7 @@ def update_all_markdown_links(output_dir, processed_items):
     """Aggiorna i link in tutti i file Markdown generati."""
     for item_id, item_data in processed_items.items():
         if item_data["type"] == "page":
-            page_path = os.path.join(output_dir, item_data["slug"], "index.md")
+            page_path = os.path.join(output_dir, f"{item_data['slug']}.md")
             update_markdown_links(page_path, processed_items)
         if item_data["type"] == "database":
             database_path = os.path.join(output_dir, f"{item_data['slug']}.md")

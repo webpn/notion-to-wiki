@@ -55,7 +55,7 @@ def convert_block_to_markdown(block):
     elif block_type == "child_page":
         title = block["child_page"]["title"]
         slug = slugify(title)
-        markdown = f"[{title}]({slug}/index.md)"
+        markdown = f"[{title}]({slug}.md)"
     elif block_type == "child_database":
         title = block["child_database"]["title"]
         slug = slugify(title)
@@ -75,9 +75,10 @@ def convert_page_to_markdown(page_data, blocks, output_dir):
     if not title.strip():
         title = "Untitled"
     slug = slugify(title)
-    page_dir = os.path.join(output_dir, slug)
-    os.makedirs(page_dir, exist_ok=True)
-    output_file = os.path.join(page_dir, "index.md")
+    
+    # Assicura che la directory di output esista
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = os.path.join(output_dir, f"{slug}.md")
 
     if not blocks:
         return slug, title
@@ -188,7 +189,7 @@ def convert_database_to_markdown(database_data, results, all_data, all_records, 
                                 related_title = related_info["title"]
                                 
                                 if related_info["type"] == "page":
-                                    related_names.append(f"[{related_title}]({slugify(related_title)}/index.md)")
+                                    related_names.append(f"[{related_title}]({slugify(related_title)}.md)")
                                 elif related_info["type"] == "database":
                                     related_names.append(f"[{related_title}]({slugify(related_title)}.md)")
                             # Controlla se è un record di un database
